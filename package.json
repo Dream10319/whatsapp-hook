@@ -1,5 +1,5 @@
 {
-  "name": "whatsapp-web-reveng",
+  "name": "whatsapp-hook",
   "version": "1.0.0",
   "description": "A graphical, web-based client for WhatsApp Web, using the reverse engineered Python code as backend.",
   "main": "index.js",
@@ -14,7 +14,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sigalor/whatsapp-web-reveng.git"
+    "url": "https://github.com/Vigil1Light/whatsapp-hook"
   },
   "dependencies": {
     "docker": "^1.0.0",
