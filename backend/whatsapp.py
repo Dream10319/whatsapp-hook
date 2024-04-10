@@ -30,14 +30,14 @@ import curve25519
 import pyqrcode 
 from utilities import * 
 from whatsapp_binary_reader import whatsappReadBinary 
+from importlib import reload
+import ssl
 
-WHATSAPP_WEB_VERSION="2,2121,6"
+WHATSAPP_WEB_VERSION="2,2412,1"
 
-# reload(sys) 
+reload(sys) 
 # sys.setdefaultencoding("utf-8") 
-
-
-
+tag = ''
 def HmacSha256(key, sign):
     return hmac.new(key, sign, hashlib.sha256).digest() 
 
@@ -143,10 +143,37 @@ class WhatsAppWebClient:
 
     def onMessage(self, ws, message):
         try:
-            messageSplit = message.split(",", 1) 
-            messageTag = messageSplit[0] 
-            messageContent = messageSplit[1] 
-            
+            # messageSplit = '' 
+            # messageTag = ''
+            # messageContent = ''
+            # if type(message) == str:
+            #     messageSplit = message.split(",", 1) 
+            #     messageTag = messageSplit[0] 
+            #     messageContent = messageSplit[1] 
+            # elif type(message) != str:
+            #     global tag
+            #     message = tag + ',{"status":200,"ref":"2@L0qt9XxJAvCbs6Qdg+wrA7xar2O42lzXAChrx7aQ/l7rZrlPsqkA0dk/3mchnsZjMcSF5WZmRQl/zQ==","ttl":20000,"update":false,"curr":"2.2412.1","time":' + tag + '}' 
+            #     messageSplit = message.split(",", 1) 
+            #     messageTag = messageSplit[0] 
+            #     messageContent = messageSplit[1] 
+            #     pend = self.messageQueue[messageTag]
+            #     eprint("Message after login: ", message) 
+            #     self.loginInfo["serverRef"] = json.loads(messageContent)["ref"] 
+            #     eprint("set server id: " + self.loginInfo["serverRef"]) 
+            #     self.loginInfo["privateKey"] = curve25519.Private() 
+            #     self.loginInfo["publicKey"] = self.loginInfo["privateKey"].get_public() 
+            #     # qrCodeContents = self.loginInfo["serverRef"] + "," + base64.b64encode(self.loginInfo["privateKey"].serialize()).decode('utf-8') + base64.b64encode(self.loginInfo["publicKey"].serialize()).decode('utf-8') + "," + self.loginInfo["clientId"].decode('utf-8')
+            #     qrCodeContents = self.loginInfo["serverRef"] + "," + base64.b64encode(self.loginInfo["publicKey"].serialize()).decode('utf-8') + "," + self.loginInfo["clientId"].decode('utf-8')
+            #     # qrCodeContents = '2@Ny7T3KTVTUBujtzlyav/+OpaTCvy4HdDrmvLzABSbgk8IriE6ddg+wH74nRBjHXOtE8QVCC2agBuhA==,nSP9vzDapemWzR97s5e2HmJcGw2oT1RIzlXqaV9bDxY=,03tSl3Q1rmyO0L7C3C7JyGyboP2pBYVO1Q7UwgtyayA=,CgrGF39vAUe3IQ2PwboHCC8QIkSuSZzCc4/Rv43sUQM='
+            #     eprint("qr code contents: " + qrCodeContents) 
+
+            #     svgBuffer = io.BytesIO() 											# from https://github.com/mnooner256/pyqrcode/issues/39#issuecomment-207621532
+            #     pyqrcode.create(qrCodeContents, error='L').svg(svgBuffer, scale=6, background="rgba(0,0,0,0.0)", module_color="#122E31", quiet_zone=0) 
+            #     if "callback" in pend and pend["callback"] is not None and "func" in pend["callback"] and pend["callback"]["func"] is not None and "tag" in pend["callback"] and pend["callback"]["tag"] is not None:
+            #         pend["callback"]["func"]({ "type": "generated_qr_code", "image": "data:image/svg+xml;base64," + base64.b64encode(svgBuffer.getvalue()).decode('utf-8'), "content": qrCodeContents }, pend["callback"]) 
+            messageSplit = message.split(",", 1)
+            messageTag = messageSplit[0]
+            messageContent = messageSplit[1]
             if messageTag in self.messageQueue:											# when the server responds to a client's message
                 pend = self.messageQueue[messageTag] 
                 if pend["desc"] == "_status":
@@ -161,13 +188,13 @@ class WhatsAppWebClient:
                     eprint("set server id: " + self.loginInfo["serverRef"]) 
                     self.loginInfo["privateKey"] = curve25519.Private() 
                     self.loginInfo["publicKey"] = self.loginInfo["privateKey"].get_public() 
-                    qrCodeContents = self.loginInfo["serverRef"] + "," + base64.b64encode(self.loginInfo["publicKey"].serialize()) + "," + self.loginInfo["clientId"] 
+                    qrCodeContents = self.loginInfo["serverRef"] + "," + base64.b64encode(self.loginInfo["privateKey"].serialize()).decode('utf-8') + base64.b64encode(self.loginInfo["publicKey"].serialize()).decode('utf-8') + "," + self.loginInfo["clientId"].decode('utf-8') + ",1"
                     eprint("qr code contents: " + qrCodeContents) 
 
                     svgBuffer = io.BytesIO() 											# from https://github.com/mnooner256/pyqrcode/issues/39#issuecomment-207621532
                     pyqrcode.create(qrCodeContents, error='L').svg(svgBuffer, scale=6, background="rgba(0,0,0,0.0)", module_color="#122E31", quiet_zone=0) 
                     if "callback" in pend and pend["callback"] is not None and "func" in pend["callback"] and pend["callback"]["func"] is not None and "tag" in pend["callback"] and pend["callback"]["tag"] is not None:
-                        pend["callback"]["func"]({ "type": "generated_qr_code", "image": "data:image/svg+xml base64," + base64.b64encode(svgBuffer.getvalue()), "content": qrCodeContents }, pend["callback"]) 
+                        pend["callback"]["func"]({ "type": "generated_qr_code", "image": "data:image/svg+xml base64," + base64.b64encode(svgBuffer.getvalue()).decode('utf-8'), "content": qrCodeContents }, pend["callback"]) 
             else:
                 try:
                     jsonObj = json.loads(messageContent) 								# try reading as json
@@ -238,22 +265,26 @@ class WhatsAppWebClient:
 
 
     def connect(self):
-        self.activeWs = websocket.WebSocketApp("wss://web.whatsapp.com/ws",
+        self.activeWs = websocket.WebSocketApp("wss://web.whatsapp.com/ws/chat",
                                                on_message = lambda ws, message: self.onMessage(ws, message),
                                                on_error = lambda ws, error: self.onError(ws, error),
                                                on_open = lambda ws: self.onOpen(ws),
                                                on_close = lambda ws: self.onClose(ws),
                                                header = { "Origin: https://web.whatsapp.com" }) 
         
-        self.websocketThread = Thread(target = self.activeWs.run_forever) 
+        sslopt={"cert_reqs": ssl.CERT_NONE} # Example option, adjust as needed
+
+        self.websocketThread = Thread(target=lambda: self.activeWs.run_forever(sslopt=sslopt))
         self.websocketThread.daemon = True 
         self.websocketThread.start() 
 
     def generateQRCode(self, callback=None):
         self.loginInfo["clientId"] = base64.b64encode(os.urandom(16)) 
-        messageTag = str(getTimestamp()) 
+        messageTag = str(getTimestamp())
+        global tag
+        tag = messageTag 
         self.messageQueue[messageTag] = { "desc": "_login", "callback": callback } 
-        message = messageTag + ',["admin","init",['+ WHATSAPP_WEB_VERSION + '],["Chromium at ' + datetime.datetime.now().isoformat() + '","Chromium"],"' + self.loginInfo["clientId"] + '",true]' 
+        message = messageTag + ',["admin","init",['+ WHATSAPP_WEB_VERSION + '],["Chromium at ' + datetime.datetime.now().isoformat() + '","Chromium"],"' + self.loginInfo["clientId"].decode('utf-8') + '",false]' 
         self.activeWs.send(message) 
 
     def restoreSession(self, callback=None):

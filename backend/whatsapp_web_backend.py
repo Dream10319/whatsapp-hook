@@ -15,8 +15,16 @@ import traceback
 from SimpleWebSocketServer import SimpleWebSocketServer, WebSocket 
 from whatsapp import WhatsAppWebClient 
 from utilities import * 
+from importlib import reload
 
-# reload(sys)
+import ssl
+import certifi
+
+
+ssl_context = ssl.create_default_context()
+ssl_context.load_verify_locations(certifi.where())
+
+reload(sys)
 # sys.setdefaultencoding("utf-8")
 
 
@@ -63,16 +71,16 @@ class WhatsAppWeb(WebSocket):
                         "func": lambda cbSelf: self.sendJSON(mergeDicts({ "type": "resource_connected", "resource": "whatsapp" }, getAttr(cbSelf, "args")), getAttr(cbSelf, "tag")),
                         "tag": tag,
                         "args": { "resource_instance_id": clientInstanceId }
-                    } 
+                    }
                     onMessageCallback = {
                         "func": lambda obj, cbSelf, moreArgs=None: self.sendJSON(mergeDicts(mergeDicts({ "type": "whatsapp_message_received", "message": obj, "timestamp": getTimestampMs() }, getAttr(cbSelf, "args")), moreArgs), getAttr(cbSelf, "tag")),
                         "args": { "resource_instance_id": clientInstanceId }
-                    } 
+                    }
                     onCloseCallback = {
                         "func": lambda cbSelf: self.sendJSON(mergeDicts({ "type": "resource_gone", "resource": "whatsapp" }, getAttr(cbSelf, "args")), getAttr(cbSelf, "tag")),
                         "args": { "resource_instance_id": clientInstanceId }
-                    } 
-                    self.clientInstances[clientInstanceId] = WhatsAppWebClient(onOpenCallback, onMessageCallback, onCloseCallback) 
+                    }
+                    self.clientInstances[clientInstanceId] = WhatsAppWebClient(onOpenCallback, onMessageCallback, onCloseCallback)
                 else:
                     currWhatsAppInstance = self.clientInstances[obj["whatsapp_instance_id"]] 
                     callback = {
@@ -104,7 +112,7 @@ class WhatsAppWeb(WebSocket):
         eprint(self.address, "connected to backend") 
 
     def handleClose(self):
-        whatsapp.disconnect() 
+        WhatsAppWebClient.disconnect() 
         eprint(self.address, "closed connection to backend") 
 
 server = SimpleWebSocketServer("", 2020, WhatsAppWeb) 
